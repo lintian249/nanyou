@@ -1,0 +1,941 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>💕 今日男友评分</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Serif+SC:wght@400;600;700;900&family=Ma+Shan+Zheng&family=Dancing+Script:wght@400;700&display=swap" rel="stylesheet">
+<style>
+  /* ===== RESET & BASE ===== */
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  :root {
+    --bg: #0d0808;
+    --card-bg: rgba(40, 20, 22, 0.6);
+    --card-border: rgba(200, 120, 110, 0.2);
+    --gold: #d4a574;
+    --gold-light: #f0d5b0;
+    --rose: #c9756a;
+    --rose-light: #e8a99b;
+    --deep-red: #5a1a1a;
+    --cream: #f5ebe0;
+    --text-primary: #f5e8dc;
+    --text-secondary: #b8a096;
+    --text-muted: #7a6a60;
+    --glow: rgba(200, 120, 110, 0.3);
+    --font-display: 'Noto Serif SC', serif;
+    --font-hand: 'Ma Shan Zheng', cursive;
+    --font-script: 'Dancing Script', cursive;
+  }
+  html { scroll-behavior: smooth; }
+  body {
+    font-family: var(--font-display);
+    background: var(--bg);
+    color: var(--text-primary);
+    min-height: 100vh;
+    overflow-x: hidden;
+    position: relative;
+  }
+
+  /* ===== AMBIENT BACKGROUND ===== */
+  #particle-canvas {
+    position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+    z-index: 0; pointer-events: none;
+  }
+  .bg-gradient {
+    position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+    background:
+      radial-gradient(ellipse 80% 60% at 50% 0%, rgba(90, 26, 26, 0.3) 0%, transparent 70%),
+      radial-gradient(ellipse 60% 50% at 20% 80%, rgba(180, 100, 80, 0.08) 0%, transparent 60%),
+      radial-gradient(ellipse 50% 40% at 80% 70%, rgba(200, 120, 110, 0.06) 0%, transparent 50%);
+    z-index: 0; pointer-events: none;
+  }
+
+  /* ===== SCROLLBAR ===== */
+  ::-webkit-scrollbar { width: 6px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: var(--rose); border-radius: 3px; }
+
+  /* ===== HEADER ===== */
+  .header {
+    position: relative; z-index: 2;
+    text-align: center; padding: 60px 20px 30px;
+  }
+  .header-badge {
+    display: inline-block;
+    font-family: var(--font-script);
+    font-size: 14px; color: var(--gold);
+    letter-spacing: 4px;
+    padding: 6px 20px;
+    border: 1px solid rgba(212, 165, 116, 0.3);
+    border-radius: 20px;
+    margin-bottom: 20px;
+    backdrop-filter: blur(10px);
+  }
+  .header h1 {
+    font-size: clamp(36px, 6vw, 64px);
+    font-weight: 900;
+    background: linear-gradient(135deg, var(--gold-light) 0%, var(--rose-light) 50%, var(--gold) 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+    line-height: 1.2;
+  }
+  .header .subtitle {
+    font-family: var(--font-script);
+    font-size: clamp(16px, 2.5vw, 22px);
+    color: var(--text-secondary);
+    margin-top: 8px;
+    letter-spacing: 2px;
+  }
+  .header .divider {
+    width: 60px; height: 2px;
+    background: linear-gradient(90deg, transparent, var(--gold), transparent);
+    margin: 16px auto 0;
+  }
+
+  /* ===== SCORE SUMMARY (STICKY) ===== */
+  .score-bar {
+    position: sticky; top: 0; z-index: 100;
+    background: rgba(13, 8, 8, 0.85);
+    backdrop-filter: blur(20px);
+    border-bottom: 1px solid rgba(200, 120, 110, 0.15);
+    padding: 12px 24px;
+    display: flex; align-items: center; justify-content: space-between;
+    transition: transform 0.3s;
+  }
+  .score-bar .label {
+    font-size: 13px; color: var(--text-secondary);
+    letter-spacing: 2px;
+  }
+  .score-bar .label span { font-family: var(--font-script); color: var(--gold); }
+  .score-bar .score-display {
+    display: flex; align-items: center; gap: 12px;
+  }
+  .score-bar .score-number {
+    font-size: 28px; font-weight: 900;
+    font-family: var(--font-display);
+    background: linear-gradient(135deg, var(--gold-light), var(--rose-light));
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+    min-width: 60px; text-align: right;
+  }
+  .score-bar .score-total {
+    font-size: 14px; color: var(--text-muted);
+  }
+  .score-bar .progress-ring {
+    width: 36px; height: 36px; position: relative;
+  }
+  .score-bar .progress-ring svg {
+    transform: rotate(-90deg);
+  }
+  .score-bar .progress-ring circle {
+    fill: none; stroke-width: 3;
+  }
+  .score-bar .progress-ring .bg-circle {
+    stroke: rgba(200, 120, 110, 0.15);
+  }
+  .score-bar .progress-ring .fg-circle {
+    stroke: var(--gold);
+    stroke-linecap: round;
+    transition: stroke-dashoffset 0.5s ease;
+  }
+
+  /* ===== CONTAINER ===== */
+  .container {
+    position: relative; z-index: 2;
+    max-width: 800px; margin: 0 auto; padding: 20px 16px 100px;
+  }
+
+  /* ===== CATEGORY NAV ===== */
+  .cat-nav {
+    position: relative; z-index: 2;
+    max-width: 800px; margin: 0 auto;
+    display: flex; flex-wrap: wrap; gap: 8px;
+    padding: 0 16px 20px;
+    justify-content: center;
+  }
+  .cat-nav-item {
+    background: rgba(40, 20, 22, 0.5);
+    border: 1px solid rgba(200, 120, 110, 0.15);
+    border-radius: 20px;
+    padding: 6px 14px;
+    font-size: 13px; color: var(--text-secondary);
+    cursor: pointer; transition: all 0.25s;
+    text-decoration: none;
+    backdrop-filter: blur(6px);
+  }
+  .cat-nav-item:hover {
+    border-color: var(--rose);
+    color: var(--gold-light);
+    transform: translateY(-2px);
+  }
+
+  /* ===== CATEGORY CARD ===== */
+  .category-card {
+    background: var(--card-bg);
+    border: 1px solid var(--card-border);
+    border-radius: 20px;
+    padding: 24px 20px 20px;
+    margin-bottom: 20px;
+    backdrop-filter: blur(10px);
+    transition: border-color 0.3s, box-shadow 0.3s;
+    opacity: 0; transform: translateY(30px);
+    animation: cardIn 0.6s ease forwards;
+    scroll-margin-top: 70px;
+  }
+  .category-card:nth-child(1) { animation-delay: 0.05s; }
+  .category-card:nth-child(2) { animation-delay: 0.1s; }
+  .category-card:nth-child(3) { animation-delay: 0.15s; }
+  .category-card:nth-child(4) { animation-delay: 0.2s; }
+  .category-card:nth-child(5) { animation-delay: 0.25s; }
+  .category-card:nth-child(6) { animation-delay: 0.3s; }
+  .category-card:nth-child(7) { animation-delay: 0.35s; }
+  .category-card:nth-child(8) { animation-delay: 0.4s; }
+  .category-card:nth-child(9) { animation-delay: 0.45s; }
+  .category-card:nth-child(10) { animation-delay: 0.5s; }
+  @keyframes cardIn {
+    to { opacity: 1; transform: translateY(0); }
+  }
+  .category-card:hover {
+    border-color: rgba(200, 120, 110, 0.4);
+    box-shadow: 0 0 30px rgba(200, 120, 110, 0.08);
+  }
+
+  .category-header {
+    display: flex; align-items: center; justify-content: space-between;
+    margin-bottom: 16px; padding-bottom: 12px;
+    border-bottom: 1px solid rgba(200, 120, 110, 0.1);
+  }
+  .category-title {
+    display: flex; align-items: center; gap: 10px;
+  }
+  .category-title .icon {
+    font-size: 22px; line-height: 1;
+  }
+  .category-title .name {
+    font-size: 18px; font-weight: 700;
+    color: var(--text-primary);
+  }
+  .category-score {
+    font-family: var(--font-display);
+    font-size: 20px; font-weight: 700;
+    color: var(--gold);
+    min-width: 40px; text-align: right;
+  }
+  .category-score .max {
+    font-size: 13px; font-weight: 400;
+    color: var(--text-muted);
+  }
+
+  /* ===== INDICATOR ITEM ===== */
+  .indicator {
+    display: flex; align-items: center;
+    padding: 10px 0;
+    border-bottom: 1px solid rgba(200, 120, 110, 0.05);
+  }
+  .indicator:last-child { border-bottom: none; }
+  .indicator-label {
+    flex: 1; font-size: 15px;
+    color: var(--text-secondary);
+    line-height: 1.4;
+    padding-right: 12px;
+  }
+  .indicator-label .note {
+    display: block; font-size: 12px;
+    color: var(--text-muted); margin-top: 2px;
+  }
+
+  /* ===== STAR RATING ===== */
+  .star-rating {
+    display: flex; gap: 4px; flex-shrink: 0;
+  }
+  .star-btn {
+    background: none; border: none; cursor: pointer;
+    font-size: 22px; line-height: 1;
+    color: rgba(120, 80, 70, 0.4);
+    transition: all 0.2s;
+    padding: 2px;
+    position: relative;
+  }
+  .star-btn:hover { transform: scale(1.2); }
+  .star-btn.active {
+    color: var(--gold);
+    text-shadow: 0 0 12px rgba(212, 165, 116, 0.5);
+  }
+  .star-btn .score-num {
+    display: none;
+    position: absolute; top: -18px; left: 50%;
+    transform: translateX(-50%);
+    font-size: 10px; color: var(--gold);
+    font-family: var(--font-display);
+  }
+  .star-btn:hover .score-num { display: block; }
+
+  /* ===== SUBMIT BUTTON ===== */
+  .submit-area {
+    text-align: center; padding: 40px 0 20px;
+  }
+  .btn-submit {
+    position: relative;
+    background: linear-gradient(135deg, var(--deep-red), var(--rose));
+    border: none; border-radius: 50px;
+    padding: 16px 48px;
+    font-family: var(--font-display);
+    font-size: 18px; font-weight: 700;
+    color: var(--cream);
+    cursor: pointer;
+    letter-spacing: 4px;
+    transition: all 0.3s;
+    box-shadow: 0 4px 30px rgba(200, 120, 110, 0.3);
+    overflow: hidden;
+  }
+  .btn-submit::before {
+    content: '';
+    position: absolute; top: 0; left: -100%;
+    width: 100%; height: 100%;
+    background: linear-gradient(90deg, transparent, rgba(255,255,255,0.1), transparent);
+    transition: left 0.6s;
+  }
+  .btn-submit:hover::before { left: 100%; }
+  .btn-submit:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 40px rgba(200, 120, 110, 0.4);
+  }
+  .btn-submit:active { transform: translateY(0); }
+
+  /* ===== RESULT OVERLAY ===== */
+  .result-overlay {
+    position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+    z-index: 200;
+    background: rgba(13, 8, 8, 0.92);
+    backdrop-filter: blur(20px);
+    display: none;
+    align-items: center; justify-content: center;
+    padding: 24px;
+  }
+  .result-overlay.show {
+    display: flex;
+    animation: overlayIn 0.5s ease;
+  }
+  @keyframes overlayIn {
+    from { opacity: 0; }
+    to { opacity: 1; }
+  }
+
+  .result-card {
+    text-align: center; max-width: 480px;
+    animation: resultPop 0.6s ease 0.2s both;
+  }
+  @keyframes resultPop {
+    from { opacity: 0; transform: scale(0.8) translateY(20px); }
+    to { opacity: 1; transform: scale(1) translateY(0); }
+  }
+
+  .result-greeting {
+    font-family: var(--font-script);
+    font-size: 18px; color: var(--text-secondary);
+    margin-bottom: 8px;
+  }
+  .result-title {
+    font-size: 24px; font-weight: 700;
+    color: var(--text-primary);
+    margin-bottom: 24px;
+  }
+
+  .result-score-circle {
+    width: 200px; height: 200px; margin: 0 auto 24px;
+    position: relative;
+  }
+  .result-score-circle svg {
+    transform: rotate(-90deg);
+  }
+  .result-score-circle .bg {
+    fill: none; stroke: rgba(200, 120, 110, 0.1);
+    stroke-width: 6;
+  }
+  .result-score-circle .fg {
+    fill: none; stroke: url(#scoreGradient);
+    stroke-width: 6; stroke-linecap: round;
+    stroke-dasharray: 565.48;
+    stroke-dashoffset: 565.48;
+    transition: stroke-dashoffset 1.5s ease;
+  }
+  .result-score-circle .center-text {
+    position: absolute; top: 50%; left: 50%;
+    transform: translate(-50%, -50%);
+    text-align: center;
+  }
+  .result-score-circle .big-score {
+    font-size: 56px; font-weight: 900;
+    font-family: var(--font-display);
+    background: linear-gradient(135deg, var(--gold-light), var(--rose-light));
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+    line-height: 1;
+  }
+  .result-score-circle .score-label {
+    font-size: 14px; color: var(--text-muted);
+    margin-top: 4px;
+  }
+
+  .result-grade {
+    font-size: 28px; font-weight: 700;
+    margin-bottom: 8px;
+  }
+  .result-comment {
+    font-size: 16px; color: var(--text-secondary);
+    line-height: 1.6;
+    margin-bottom: 32px;
+  }
+  .result-detail {
+    display: grid; grid-template-columns: 1fr 1fr; gap: 8px 24px;
+    text-align: left; margin-bottom: 32px;
+    padding: 16px 20px;
+    background: rgba(200, 120, 110, 0.05);
+    border-radius: 12px;
+  }
+  .result-detail-item {
+    display: flex; justify-content: space-between;
+    font-size: 14px;
+    padding: 4px 0;
+  }
+  .result-detail-item .rd-label {
+    color: var(--text-secondary);
+  }
+  .result-detail-item .rd-score {
+    color: var(--gold);
+    font-weight: 600;
+  }
+
+  .btn-close-result {
+    background: transparent;
+    border: 1px solid rgba(200, 120, 110, 0.3);
+    border-radius: 30px;
+    padding: 12px 36px;
+    font-family: var(--font-display);
+    font-size: 15px; color: var(--text-secondary);
+    cursor: pointer;
+    transition: all 0.3s;
+  }
+  .btn-close-result:hover {
+    border-color: var(--rose);
+    color: var(--text-primary);
+  }
+
+  /* ===== CONFETTI ===== */
+  .confetti-container {
+    position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+    pointer-events: none; z-index: 201;
+    overflow: hidden;
+  }
+  .confetti-piece {
+    position: absolute; top: -20px;
+    width: 10px; height: 10px;
+    opacity: 0;
+    animation: confettiFall linear forwards;
+  }
+  @keyframes confettiFall {
+    0% { transform: translateY(0) rotate(0deg); opacity: 1; }
+    100% { transform: translateY(100vh) rotate(720deg); opacity: 0; }
+  }
+
+  /* ===== RESPONSIVE ===== */
+  @media (max-width: 600px) {
+    .header { padding: 40px 16px 20px; }
+    .score-bar { padding: 10px 16px; }
+    .score-bar .score-number { font-size: 22px; min-width: 45px; }
+    .category-card { padding: 16px 14px; }
+    .category-title .name { font-size: 16px; }
+    .indicator { flex-direction: column; align-items: flex-start; gap: 8px; }
+    .indicator-label { font-size: 14px; padding-right: 0; }
+    .star-rating { align-self: flex-end; }
+    .star-btn { font-size: 20px; }
+    .result-score-circle { width: 160px; height: 160px; }
+    .result-score-circle .big-score { font-size: 44px; }
+    .result-detail { grid-template-columns: 1fr; }
+  }
+</style>
+</head>
+<body>
+
+<!-- Background -->
+<div class="bg-gradient"></div>
+<canvas id="particle-canvas"></canvas>
+
+<!-- Sticky Score Bar -->
+<div class="score-bar" id="scoreBar">
+  <div class="label">
+    <span>♥</span> 实时评分 <span id="progressText" style="font-size:11px;color:var(--text-muted);margin-left:8px;">0/100</span>
+  </div>
+  <div class="score-display">
+    <div class="progress-ring">
+      <svg width="36" height="36" viewBox="0 0 36 36">
+        <circle class="bg-circle" cx="18" cy="18" r="15"/>
+        <circle class="fg-circle" id="progressCircle" cx="18" cy="18" r="15"
+          stroke-dasharray="94.25" stroke-dashoffset="94.25"/>
+      </svg>
+    </div>
+    <span class="score-number" id="liveScore">0</span>
+    <span class="score-total">/ 1000</span>
+  </div>
+</div>
+
+<!-- Header -->
+<header class="header">
+  <div class="header-badge">💕 Love Meter</div>
+  <h1>今日男友评分</h1>
+  <p class="subtitle">10大维度 · 100项指标 · 1000分制 · 今天给我打个分吧</p>
+  <div class="divider"></div>
+</header>
+
+<!-- Category Quick Nav -->
+<nav class="cat-nav" id="catNav"></nav>
+
+<!-- Main Content -->
+<div class="container" id="app"></div>
+
+<!-- Result Overlay -->
+<div class="result-overlay" id="resultOverlay">
+  <div class="result-card">
+    <p class="result-greeting">~ 评分结果 ~</p>
+    <h2 class="result-title">今日男友得分</h2>
+    <div class="result-score-circle">
+      <svg width="200" height="200" viewBox="0 0 200 200">
+        <defs>
+          <linearGradient id="scoreGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+            <stop offset="0%" stop-color="#f0d5b0"/>
+            <stop offset="100%" stop-color="#e8a99b"/>
+          </linearGradient>
+        </defs>
+        <circle class="bg" cx="100" cy="100" r="90"/>
+        <circle class="fg" id="resultCircle" cx="100" cy="100" r="90"/>
+      </svg>
+      <div class="center-text">
+        <div class="big-score" id="finalScore">0</div>
+        <div class="score-label">/ 1000 分</div>
+      </div>
+    </div>
+    <div class="result-grade" id="gradeText">🌟🌟🌟</div>
+    <p class="result-comment" id="commentText">继续加油哦！</p>
+    <div class="result-detail" id="resultDetail"></div>
+    <button class="btn-close-result" onclick="closeResult()">再评一次</button>
+  </div>
+</div>
+
+<!-- Confetti Container -->
+<div class="confetti-container" id="confettiContainer"></div>
+
+<script>
+  // ===== DATA =====  10大维度 × 10项指标 = 100项，满分1000分
+  const categories = [
+    {
+      icon: '💗', name: '体贴关怀',
+      indicators: [
+        { label: '情绪低落时第一时间察觉并安慰', note: '不用我说出口，他就能看出我不开心并主动来哄' },
+        { label: '记住生理期并在那几天特别照顾', note: '记得日子，不让我碰凉水、主动泡红糖姜茶' },
+        { label: '记得我的饮食喜好和忌口', note: '奶茶几分糖、不吃香菜、对什么过敏，全都记着' },
+        { label: '天冷时把外套给我穿、牵我的手取暖', note: '自己冻着也不让我冷，手冷会揣进他兜里' },
+        { label: '我随口说的话记在心里并默默兑现', note: '我提过想吃的东西、想去的地方，他悄悄安排' },
+        { label: '走路让我走内侧，自己靠近车的一边', note: '下意识的保护动作，最能看出真心' },
+        { label: '生病时买药熬粥陪我去医院', note: '不是只会说"多喝热水"，是真的行动起来照顾我' },
+        { label: '睡前说晚安、醒来第一时间找我', note: '一天的开始和结束都有他，安心又甜蜜' },
+        { label: '我累的时候主动帮我按摩放松', note: '捏肩、捶腿、揉太阳穴，动作温柔又贴心' },
+        { label: '在外吃饭记得提醒服务员我的忌口', note: '不用我开口，他先帮我说"这个不要放香菜"' }
+      ]
+    },
+    {
+      icon: '🌹', name: '浪漫惊喜',
+      indicators: [
+        { label: '纪念日提前准备礼物和惊喜', note: '不是当天才想起来，是提前很久就开始筹划' },
+        { label: '平白无故送花或小礼物', note: '不需要节日也不需要理由，就是想让我开心' },
+        { label: '会写情话小纸条或发长文表白', note: '手写的文字最动人，认真写的心里话最珍贵' },
+        { label: '约会提前做攻略，安排好行程餐厅', note: '不用我操心跟着走就行，一切都安排得妥妥的' },
+        { label: '记得我们所有的"第一次"', note: '第一次约会地点、第一次看的电影、第一次牵手' },
+        { label: '为我学做一道我爱吃的菜', note: '哪怕做得不完美，愿意为我学习的心意最棒' },
+        { label: '重要日子准备仪式感布置', note: '蜡烛、音乐、气球，用心营造浪漫的氛围' },
+        { label: '偷偷记下我购物车舍不得买的东西', note: '找个特别的日子送给我，比什么都惊喜' },
+        { label: '有只有我们懂的梗和专属暗号', note: '一个眼神就懂对方，这种默契别人学不来' },
+        { label: '朋友圈大方秀恩爱不藏着掖着', note: '愿意把我公开在他的社交圈，是一种认可' }
+      ]
+    },
+    {
+      icon: '🛡️', name: '安全感',
+      indicators: [
+        { label: '手机随便我看，没有秘密', note: '密码我知道，手机我随便翻，坦坦荡荡没猫腻' },
+        { label: '和异性保持清晰边界不暧昧', note: '知道什么该做什么不该做，让我百分百放心' },
+        { label: '答应我的事一定做到', note: '承诺过的从不食言，做不到的不会轻易答应' },
+        { label: '在外人面前坚定站在我这边', note: '不管对错先护着我，回家再慢慢讲道理' },
+        { label: '未来规划里有我的位置', note: '主动聊以后，他的蓝图里每一页都有我' },
+        { label: '去哪和谁在一起主动告诉我', note: '不用我查岗追问，他自己就会报备行踪' },
+        { label: '遇到问题不逃避，一起面对', note: '有困难一起扛，不会把我一个人丢下' },
+        { label: '经济上有担当不让我操心', note: '花钱有规划，不会让我为钱的事发愁' },
+        { label: '情绪稳定不冷战不玩失踪', note: '再生气也不会消失不见，有问题坐下来好好说' },
+        { label: '我遇到困难时先说"有我在"', note: '第一反应是安慰和支持，不是指责和说教' }
+      ]
+    },
+    {
+      icon: '💬', name: '沟通理解',
+      indicators: [
+        { label: '吵架后不冷战，主动来沟通', note: '冷暴力最伤人，愿意低头先哄我的人才是真的爱' },
+        { label: '认真听我说话不打断不玩手机', note: '放下手里的事，眼神看着我，认真听我讲' },
+        { label: '我讲的事他会放在心上', note: '不是左耳进右耳出，是真的记在心里了' },
+        { label: '生气时不说伤人的话', note: '再生气也有底线，不拿最狠的话戳我最痛的地方' },
+        { label: '愿意跟我分享心事和烦恼', note: '他的开心、压力、委屈都愿意说给我听' },
+        { label: '能听懂我说的"没事"到底有事没事', note: '我的口是心非他都懂，不会真的以为我没事' },
+        { label: '尊重我的想法不大男子主义', note: '遇事商量着来，不会什么都他一个人说了算' },
+        { label: '做错事主动道歉不嘴硬', note: '知道自己错了就认，不会死撑着面子不低头' },
+        { label: '不敷衍回复"哦嗯随便"', note: '每一条消息都认真回应，不会几个字把我打发了' },
+        { label: '矛盾当天解决不留到第二天', note: '不让我带着情绪过夜，睡前一定把话说开' }
+      ]
+    },
+    {
+      icon: '🍳', name: '生活照顾',
+      indicators: [
+        { label: '主动做家务，不用催就会洗碗拖地', note: '眼里有活，看到脏了乱了就主动收拾' },
+        { label: '会做饭而且愿意做给我吃', note: '有几道拿手菜，厨房不是他的禁地' },
+        { label: '个人卫生好，勤洗澡衣服干净', note: '身上没有异味，头发衣服都清清爽爽' },
+        { label: '作息规律，不熬夜不睡懒觉', note: '早睡早起身体好，不会昼夜颠倒过日子' },
+        { label: '会修东西，换灯泡装家具都能搞定', note: '动手能力强，家里东西坏了他能修' },
+        { label: '出门帮我拎包撑伞开车门', note: '绅士风度不是装的，是自然而然的习惯' },
+        { label: '记得买日用品，不会等用完才发现', note: '纸巾牙膏洗发水快没了，他悄悄就补上了' },
+        { label: '理财有规划，不月光有存款', note: '花钱有数，会为我们的未来存钱' },
+        { label: '吃饭不挑食不吧唧嘴不剩菜', note: '餐桌礼仪好，一起吃饭很舒服' },
+        { label: '分开时会照顾好自己不让我担心', note: '出差也好好吃饭睡觉，不会让我挂心' }
+      ]
+    },
+    {
+      icon: '🎯', name: '陪伴质量',
+      indicators: [
+        { label: '在一起时不一直刷手机', note: '人在心也在，不是坐在一起却各自玩手机' },
+        { label: '愿意陪我做我喜欢的事', note: '哪怕他没那么感兴趣，也愿意陪我一起开心' },
+        { label: '消息看到就回不玩消失', note: '忙完了会回我，不会大半天没音讯让我乱想' },
+        { label: '每周至少一次完整的约会', note: '不是随便吃个饭就散，是认认真真的约会' },
+        { label: '一起看电影追剧时投入不玩手机', note: '会跟我讨论剧情，不是全程低头刷手机' },
+        { label: '陪我逛街不催不烦不打游戏', note: '真心陪我逛，不会坐旁边打游戏催我走' },
+        { label: '旅行时做攻略查路线帮我拍照', note: '我只管美美的，其他事他都安排好' },
+        { label: '分别时好好说再见拥抱一下', note: '不会转身就走，好好告别是件很重要的事' },
+        { label: '我心情不好时会陪着我', note: '不会说"那你自己静静吧"，而是坐在我身边' },
+        { label: '各做各的事也觉得安心', note: '就算不说话，知道他在身边就很踏实' }
+      ]
+    },
+    {
+      icon: '✨', name: '外在形象',
+      indicators: [
+        { label: '穿搭干净有品味', note: '不一定要大牌，但搭配得好看、有自己的风格' },
+        { label: '身材管理好，有运动习惯', note: '不发胖、不松垮，保持健康的体态' },
+        { label: '笑起来的样子让我心动', note: '笑容有感染力，他一笑我的世界都亮了' },
+        { label: '身上有好闻的味道', note: '洗衣液的清香、淡淡的香水味，闻着就安心' },
+        { label: '发型清爽不油腻', note: '定期打理，不是乱糟糟一坨或者油光发亮' },
+        { label: '皮肤干净注重护理', note: '不粗糙、不长痘，看起来清清爽爽' },
+        { label: '牙齿整齐白净', note: '笑起来露出一口好牙，加分项爆表' },
+        { label: '走路姿态好不弯腰驼背', note: '抬头挺胸有精神，整个人气质就不一样' },
+        { label: '手好看手指修长', note: '手控福利，好看的手做什么都让人着迷' },
+        { label: '整体气质出众', note: '站在人群里能一眼看到他，气场不一样' }
+      ]
+    },
+    {
+      icon: '🌟', name: '性格品质',
+      indicators: [
+        { label: '幽默风趣，每天都能逗我笑', note: '跟他在一起永远不无聊，天天都开开心心的' },
+        { label: '情绪稳定，不随便发脾气', note: '不会因为一点小事就炸毛，跟他相处很舒服' },
+        { label: '对服务员外卖员都有礼貌', note: '对陌生人的态度，才是他最真实的人品' },
+        { label: '有上进心，为未来在努力', note: '不躺平不摆烂，每天都在变得更好' },
+        { label: '大方不抠门，该花的不犹豫', note: '不会在小钱上斤斤计较，尤其对我更大方' },
+        { label: '有自己的兴趣爱好', note: '生活丰富有热情，不是除了工作就是打游戏' },
+        { label: '守时守约，约会不迟到', note: '时间观念强，不会让我等很久还觉得无所谓' },
+        { label: '心胸开阔，吵架不记仇不翻旧账', note: '吵完就翻篇，不会秋后算账拿以前的事说事' },
+        { label: '有担当，遇事不逃避不甩锅', note: '出了问题先想办法解决，不是先推卸责任' },
+        { label: '真诚不虚伪，说一套做一套', note: '表里如一，不会嘴上说得好听行动却是另一回事' }
+      ]
+    },
+    {
+      icon: '💼', name: '事业经济',
+      indicators: [
+        { label: '工作认真负责，业务能力强', note: '在自己的领域里是靠谱的人，不是混日子' },
+        { label: '有清晰的职业规划和目标', note: '知道自己要往哪走，不是走一步看一步' },
+        { label: '收入稳定，能养活自己也能存钱', note: '经济独立，不会月月光靠信用卡度日' },
+        { label: '有理财意识，会存钱会投资', note: '钱生钱的思维，不是有钱就花光' },
+        { label: '约会主动买单不计较', note: '不会跟我AA制算得清清楚楚，有绅士风度' },
+        { label: '愿意为我花钱不心疼', note: '在能力范围内给我最好的，舍得为我投资' },
+        { label: '工作再忙也不忽略我', note: '不会用"忙"当借口，再忙也会抽空联系我' },
+        { label: '工作受挫不消极不抱怨', note: '遇到挫折能调整心态，不会整天负能量' },
+        { label: '有买房结婚的经济规划', note: '对我们的未来有实际的计划和准备' },
+        { label: '不攀比不虚荣，花钱有主见', note: '不会为了面子乱花钱，有自己的消费观' }
+      ]
+    },
+    {
+      icon: '👨‍👩‍👧', name: '社交家庭',
+      indicators: [
+        { label: '对我的朋友友好尊重', note: '不会让我在朋友面前尴尬，对她们也很客气' },
+        { label: '愿意陪我见家长不躲闪', note: '对我们的关系有担当，不躲躲闪闪怕见家长' },
+        { label: '逢年过节主动给我家人送祝福', note: '有心记得节日，会表达心意不敷衍' },
+        { label: '和我的闺蜜相处得体不越界', note: '保持距离、礼貌周到，不会加微信聊骚' },
+        { label: '不干涉我的社交给我自由', note: '信任我，不会查我手机、限制我交朋友' },
+        { label: '在他朋友面前给足我面子', note: '介绍我的时候很骄傲，秀恩爱不觉得丢人' },
+        { label: '他的朋友我也认可', note: '物以类聚，他的朋友靠谱说明他也靠谱' },
+        { label: '前任关系处理干净不纠缠', note: '不联系、不暧昧、不留着合照和聊天记录' },
+        { label: '尊重我家的习俗和传统', note: '不挑三拣四，愿意接受和融入我的家庭文化' },
+        { label: '主动把我介绍给他的家人朋友', note: '大大方方承认我的存在，把我带进他的生活圈' }
+      ]
+    }
+  ];
+
+  // ===== STATE =====
+  const scores = {};
+  let totalIndicators = 0;
+
+  // ===== INIT =====
+  function init() {
+    const app = document.getElementById('app');
+    const nav = document.getElementById('catNav');
+    let html = '';
+    let navHtml = '';
+    categories.forEach((cat, ci) => {
+      navHtml += `<a class="cat-nav-item" href="#cat_${ci}">${cat.icon} ${cat.name}</a>`;
+      html += `<div class="category-card" id="cat_${ci}" data-cat="${ci}">`;
+      html += `<div class="category-header">`;
+      html += `<div class="category-title"><span class="icon">${cat.icon}</span><span class="name">${cat.name}</span></div>`;
+      html += `<div class="category-score"><span class="cat-score" id="catScore_${ci}">0</span><span class="max"> /10</span></div>`;
+      html += `</div>`;
+      cat.indicators.forEach((ind, ii) => {
+        const sid = `${ci}_${ii}`;
+        totalIndicators++;
+        scores[sid] = 0;
+        html += `<div class="indicator">`;
+        html += `<div class="indicator-label">${ind.label}<span class="note">${ind.note}</span></div>`;
+        html += `<div class="star-rating" data-id="${sid}">`;
+        for (let s = 1; s <= 10; s++) {
+          html += `<button class="star-btn" data-value="${s}" onclick="setScore('${sid}', ${s})">★<span class="score-num">${s}</span></button>`;
+        }
+        html += `</div></div>`;
+      });
+      html += `</div>`;
+    });
+    html += `<div class="submit-area"><button class="btn-submit" onclick="submitScores()">♥ 提交评分 ♥</button></div>`;
+    app.innerHTML = html;
+    nav.innerHTML = navHtml;
+    requestAnimationFrame(() => initParticles());
+  }
+
+  // ===== SCORE =====
+  function setScore(id, val) {
+    scores[id] = val;
+    const container = document.querySelector(`.star-rating[data-id="${id}"]`);
+    if (!container) return;
+    const btns = container.querySelectorAll('.star-btn');
+    btns.forEach((btn, i) => {
+      btn.classList.toggle('active', i < val);
+    });
+    updateLiveScore();
+  }
+
+  function updateLiveScore() {
+    const vals = Object.values(scores);
+    const sum = vals.reduce((a, b) => a + b, 0);
+    const rated = vals.filter(v => v > 0).length;
+    const total = Math.round(sum * 1000 / (totalIndicators * 10));
+
+    document.getElementById('liveScore').textContent = total;
+    const pt = document.getElementById('progressText');
+    if (pt) pt.textContent = rated + '/' + totalIndicators;
+
+    // Progress ring
+    const circumference = 94.25;
+    const offset = circumference - (total / 1000) * circumference;
+    document.getElementById('progressCircle').style.strokeDashoffset = offset;
+
+    // Category scores
+    categories.forEach((cat, ci) => {
+      let catSum = 0;
+      cat.indicators.forEach((_, ii) => {
+        catSum += scores[`${ci}_${ii}`] || 0;
+      });
+      const catAvg = (catSum / cat.indicators.length);
+      const el = document.getElementById(`catScore_${ci}`);
+      if (el) el.textContent = catAvg.toFixed(1);
+    });
+  }
+
+  // ===== SUBMIT =====
+  function submitScores() {
+    const vals = Object.values(scores);
+    if (vals.some(v => v === 0)) {
+      alert('亲爱的，还有没打分的项目哦~ 全部评完才能看到结果！');
+      return;
+    }
+
+    const sum = vals.reduce((a, b) => a + b, 0);
+    const total = Math.round(sum * 1000 / (totalIndicators * 10));
+
+    // Show overlay
+    const overlay = document.getElementById('resultOverlay');
+    overlay.classList.add('show');
+
+    // Animate circle
+    const circumference = 565.48;
+    const offset = circumference - (total / 1000) * circumference;
+    setTimeout(() => {
+      document.getElementById('resultCircle').style.strokeDashoffset = offset;
+    }, 100);
+
+    // Animate number
+    animateNumber('finalScore', 0, total, 1500);
+
+    // Grade & comment
+    let grade, comment, emoji;
+    if (total >= 950) {
+      grade = '💎 完美男友';
+      comment = '天哪，我上辈子一定是拯救了银河系！你就是那个满分男友，每一面都让我心动。继续保持，我要给你打满分！';
+      emoji = '🌟🌟🌟🌟🌟';
+    } else if (total >= 850) {
+      grade = '🥇 金牌男友';
+      comment = '非常棒！你已经是别人家的男朋友标准了。稍微再努力一点点，就能冲击满分哦~ 爱你！';
+      emoji = '🌟🌟🌟🌟✨';
+    } else if (total >= 750) {
+      grade = '🥈 银牌男友';
+      comment = '表现不错，但还有进步空间！有些地方你已经做得很好了，继续加油，离优秀就差一小步~';
+      emoji = '🌟🌟🌟🌟';
+    } else if (total >= 650) {
+      grade = '🥉 铜牌男友';
+      comment = '嗯…及格了，但还不够哦。看看哪些方面扣分比较多，下次改进一下？我相信你可以的！';
+      emoji = '🌟🌟🌟';
+    } else if (total >= 550) {
+      grade = '📝 待进步男友';
+      comment = '今天表现不太行哦，很多地方需要改进。好好反思一下，明天争取拿个更好的分数！';
+      emoji = '🌟🌟';
+    } else {
+      grade = '⚠️ 需要反省';
+      comment = '这个分数…你自己好好想想吧！今天是不是哪里惹到我了？快去面壁思过！';
+      emoji = '🌟';
+    }
+    document.getElementById('gradeText').textContent = grade;
+    document.getElementById('commentText').textContent = comment;
+
+    // Detail breakdown
+    let detailHtml = '';
+    categories.forEach((cat, ci) => {
+      let catSum = 0;
+      cat.indicators.forEach((_, ii) => {
+        catSum += scores[`${ci}_${ii}`] || 0;
+      });
+      const catAvg = (catSum / cat.indicators.length).toFixed(1);
+      detailHtml += `<div class="result-detail-item"><span class="rd-label">${cat.icon} ${cat.name}</span><span class="rd-score">${catAvg} / 10</span></div>`;
+    });
+    document.getElementById('resultDetail').innerHTML = detailHtml;
+
+    // Confetti if score >= 750
+    if (total >= 750) {
+      launchConfetti();
+    }
+  }
+
+  function animateNumber(elId, from, to, duration) {
+    const el = document.getElementById(elId);
+    const start = performance.now();
+    function tick(now) {
+      const elapsed = now - start;
+      const progress = Math.min(elapsed / duration, 1);
+      const eased = 1 - Math.pow(1 - progress, 3);
+      const current = Math.round(from + (to - from) * eased);
+      el.textContent = current;
+      if (progress < 1) requestAnimationFrame(tick);
+    }
+    requestAnimationFrame(tick);
+  }
+
+  function closeResult() {
+    document.getElementById('resultOverlay').classList.remove('show');
+    const circumference = 565.48;
+    document.getElementById('resultCircle').style.strokeDashoffset = circumference;
+  }
+
+  // ===== CONFETTI =====
+  function launchConfetti() {
+    const container = document.getElementById('confettiContainer');
+    container.innerHTML = '';
+    const colors = ['#d4a574', '#c9756a', '#f0d5b0', '#e8a99b', '#5a1a1a', '#f5ebe0', '#ffd700', '#ff6b6b'];
+    const shapes = ['■', '●', '♥', '▲', '★'];
+    for (let i = 0; i < 60; i++) {
+      const el = document.createElement('div');
+      el.className = 'confetti-piece';
+      el.textContent = shapes[Math.floor(Math.random() * shapes.length)];
+      el.style.left = Math.random() * 100 + '%';
+      el.style.color = colors[Math.floor(Math.random() * colors.length)];
+      el.style.fontSize = (Math.random() * 14 + 8) + 'px';
+      el.style.animationDuration = (Math.random() * 2 + 2) + 's';
+      el.style.animationDelay = (Math.random() * 1.5) + 's';
+      container.appendChild(el);
+    }
+    setTimeout(() => container.innerHTML = '', 5000);
+  }
+
+  // ===== PARTICLES (Romantic floating hearts / stars) =====
+  function initParticles() {
+    const canvas = document.getElementById('particle-canvas');
+    const ctx = canvas.getContext('2d');
+    let w, h, particles = [];
+
+    function resize() {
+      w = canvas.width = window.innerWidth;
+      h = canvas.height = window.innerHeight;
+    }
+    resize();
+    window.addEventListener('resize', resize);
+
+    class Particle {
+      constructor() { this.reset(); }
+      reset() {
+        this.x = Math.random() * w;
+        this.y = Math.random() * h;
+        this.size = Math.random() * 2.5 + 1;
+        this.speedX = (Math.random() - 0.5) * 0.3;
+        this.speedY = -(Math.random() * 0.2 + 0.1);
+        this.opacity = Math.random() * 0.4 + 0.1;
+        this.shape = Math.random() > 0.6 ? 'heart' : 'dot';
+        this.pulse = Math.random() * Math.PI * 2;
+      }
+      update() {
+        this.x += this.speedX;
+        this.y += this.speedY;
+        this.pulse += 0.01;
+        if (this.y < -10 || this.x < -10 || this.x > w + 10) this.reset();
+        if (this.y < h * 0.3) this.opacity = Math.max(0, this.opacity - 0.002);
+      }
+      draw() {
+        ctx.save();
+        ctx.globalAlpha = this.opacity * (0.7 + 0.3 * Math.sin(this.pulse));
+        if (this.shape === 'heart') {
+          ctx.fillStyle = 'rgba(200, 120, 110, 0.6)';
+          ctx.font = `${this.size * 6}px serif`;
+          ctx.textAlign = 'center';
+          ctx.textBaseline = 'middle';
+          ctx.fillText('♥', this.x, this.y);
+        } else {
+          ctx.fillStyle = 'rgba(212, 165, 116, 0.4)';
+          ctx.beginPath();
+          ctx.arc(this.x, this.y, this.size, 0, Math.PI * 2);
+          ctx.fill();
+        }
+        ctx.restore();
+      }
+    }
+
+    for (let i = 0; i < 80; i++) particles.push(new Particle());
+
+    function animate() {
+      ctx.clearRect(0, 0, w, h);
+      particles.forEach(p => { p.update(); p.draw(); });
+      requestAnimationFrame(animate);
+    }
+    animate();
+  }
+
+  // ===== START =====
+  document.addEventListener('DOMContentLoaded', init);
+</script>
+</body>
+</html>
